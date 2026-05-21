@@ -81,6 +81,18 @@ function toRanked(row: DbRowRanked): RankedHighscore {
   return { ...toHighscore(row), position: row.position };
 }
 
+export async function deleteByNicknameAndGame(
+  nickname: string,
+  game: string,
+): Promise<Highscore | null> {
+  const rows = await sql<DbRow[]>`
+    DELETE FROM "Highscores"
+    WHERE "Nickname" = ${nickname} AND "Game" = ${game}
+    RETURNING ${cols}
+  `;
+  return rows[0] ? toHighscore(rows[0]) : null;
+}
+
 export async function list(filters: ListFilters): Promise<RankedHighscore[]> {
   const topRows = await sql<DbRowRanked[]>`
     ${rankedCte(filters.game)}

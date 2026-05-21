@@ -4,6 +4,8 @@ import type { AppEnv } from "./types.ts";
 import { requireApiKey } from "./middleware/auth.ts";
 import {
   CreateHighscoreSchema,
+  DeleteHighscoreSchema,
+  DeleteResultSchema,
   ErrorSchema,
   ListQuerySchema,
   RankedHighscoreSchema,
@@ -23,6 +25,7 @@ const app = new OpenAPIHono<AppEnv>({
 });
 
 app.use("/highscores", requireApiKey);
+app.use("/highscores/:nickname", requireApiKey);
 
 const submitRoute = createRoute({
   method: "post",
@@ -91,6 +94,44 @@ app.openapi(submitRoute, async (c) => {
   }
 
   return c.json({ status: "not_improved" as const, highscore: existing }, 200);
+});
+
+const deleteRoute = createRoute({
+  method: "delete",
+  path: "/highscores/:nickname",
+  tags: ["Highscores"],
+  summary: "Deleta um highscore",
+  description:
+    "Requer `Authorization: Bearer <apiKey>`. O jogo é inferido pela API key. Remove o highscore do nickname informado.",
+  security: [{ BearerAuth: [] }],
+  request: { params: DeleteHighscoreSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: DeleteResultSchema } },
+      description: "Highscore deletado",
+    },
+    401: {
+      content: { "application/json": { schema: ErrorSchema } },
+      description: "API key ausente ou inválida",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorSchema } },
+      description: "Highscore não encontrado",
+    },
+  },
+});
+
+app.openapi(deleteRoute, async (c) => {
+  const { nickname } = c.req.valid("param");
+  const game = c.get("game");
+
+  const deleted = await repo.deleteByNicknameAndGame(nickname, game);
+
+  if (!deleted) {
+    return c.json({ error: "Highscore not found" }, 404);
+  }
+
+  return c.json({ deleted }, 200);
 });
 
 app.openapi(listRoute, async (c) => {

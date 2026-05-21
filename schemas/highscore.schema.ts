@@ -53,6 +53,16 @@ export const RankedHighscoreSchema = HighscoreSchema.extend({
   position: z.number().openapi({ example: 1 }),
 }).openapi("RankedHighscore");
 
+export const DeleteHighscoreSchema = z
+  .object({
+    nickname: z.string().min(1).openapi({ example: "player1", description: "Nickname do jogador" }),
+  })
+  .openapi("DeleteHighscore");
+
+export const DeleteResultSchema = z
+  .object({ deleted: HighscoreSchema })
+  .openapi("DeleteResult");
+
 export const ErrorSchema = z
   .object({ error: z.string() })
   .openapi("Error");
