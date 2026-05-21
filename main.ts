@@ -98,7 +98,7 @@ app.openapi(submitRoute, async (c) => {
 
 const deleteRoute = createRoute({
   method: "delete",
-  path: "/highscores/:nickname",
+  path: "/highscores/{nickname}",
   tags: ["Highscores"],
   summary: "Deleta um highscore",
   description:
