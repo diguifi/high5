@@ -1,5 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
+import { cors } from "hono/cors";
 import type { AppEnv } from "./types.ts";
 import { requireApiKey } from "./middleware/auth.ts";
 import {
@@ -24,6 +25,7 @@ const app = new OpenAPIHono<AppEnv>({
   },
 });
 
+app.use("*", cors());
 app.use("/highscores", requireApiKey);
 app.use("/highscores/:nickname", requireApiKey);
 
