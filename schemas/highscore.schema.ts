@@ -8,6 +8,13 @@ export const CreateHighscoreSchema = z
   })
   .openapi("CreateHighscore");
 
+export const EncryptedPayloadSchema = z
+  .object({
+    iv: z.string().min(1).openapi({ example: "base64-iv" }),
+    payload: z.string().min(1).openapi({ example: "base64-ciphertext" }),
+  })
+  .openapi("EncryptedPayload");
+
 export const HighscoreSchema = z
   .object({
     id: z.number().openapi({ example: 1 }),

@@ -1,12 +1,14 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
+import { resolveCorsOrigin } from "./config/games.ts";
 import type { AppEnv } from "./types.ts";
 import { requireApiKey } from "./middleware/auth.ts";
+import { decryptHighscorePayload } from "./middleware/encrypted_payload.ts";
 import {
-  CreateHighscoreSchema,
   DeleteHighscoreSchema,
   DeleteResultSchema,
+  EncryptedPayloadSchema,
   ErrorSchema,
   ListQuerySchema,
   RankedHighscoreSchema,
@@ -25,8 +27,9 @@ const app = new OpenAPIHono<AppEnv>({
   },
 });
 
-app.use("*", cors());
+app.use("*", cors({ origin: (origin) => resolveCorsOrigin(origin) }));
 app.use("/highscores", requireApiKey);
+app.use("/highscores", decryptHighscorePayload);
 app.use("/highscores/:nickname", requireApiKey);
 
 const submitRoute = createRoute({
@@ -35,11 +38,12 @@ const submitRoute = createRoute({
   tags: ["Highscores"],
   summary: "Submete um highscore",
   description:
+    "O body deve ser um envelope AES-GCM `{ iv, payload }` criptografado com a `criptKey` do jogo. " +
     "Requer `Authorization: Bearer <apiKey>`. O jogo é identificado pela API key — não é informado no body. Cria um novo highscore ou atualiza se o score for maior para o mesmo nickname.",
   security: [{ BearerAuth: [] }],
   request: {
     body: {
-      content: { "application/json": { schema: CreateHighscoreSchema } },
+      content: { "application/json": { schema: EncryptedPayloadSchema } },
       required: true,
     },
   },
@@ -55,6 +59,10 @@ const submitRoute = createRoute({
     401: {
       content: { "application/json": { schema: ErrorSchema } },
       description: "API key ausente ou inválida",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorSchema } },
+      description: "Envelope criptografado malformado ou invalido",
     },
     422: {
       content: { "application/json": { schema: ErrorSchema } },
@@ -80,7 +88,7 @@ const listRoute = createRoute({
 });
 
 app.openapi(submitRoute, async (c) => {
-  const { nickname, score, region } = c.req.valid("json");
+  const { nickname, score, region } = c.get("highscorePayload");
   const game = c.get("game");
 
   const existing = await repo.findByNicknameAndGame(nickname, game);
